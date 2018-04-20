@@ -524,7 +524,6 @@ static int studentfs_write(const char *path, const char *buf, size_t size,
 		}
 
 	}
-	#endif
 
 	(void) path;
 	res = pwrite(fi->fh, buf, size, offset);

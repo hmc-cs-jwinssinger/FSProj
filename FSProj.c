@@ -35,15 +35,25 @@
 #include <sys/time.h>
 #include <sys/param.h>
 #include <string.h>
-#ifdef HAVE_SETXATTR
 #include <sys/xattr.h>
-#endif
 
 /* Project header files */
 #include "consts.h"
 #include "macros.h"
 
 /* Helper methods */
+// TODO: Write this
+/* Version changes gets the number of changes bytewise made to a file
+ * at a file descriptor.
+ *
+ * My thinking on implementation:
+ * Store the fd's and associated number of changes made to them in
+ * a data structure of file descriptors globally.
+ */
+int ver_changes(int fd) {
+	return 0;
+}
+
 char *get_next_vnum(const char *path) {
 	char *curr_vnum = malloc(MAX_VNUM_LEN);
 
@@ -52,13 +62,11 @@ char *get_next_vnum(const char *path) {
 		return "1";
 	}
 
-	#ifdef HAVE_SETXATTR
 	int res = studentfs_getxattr(path, CURR_VNUM, curr_vnum, MAX_VNUM_LEN);
 	if (res < 0) {
 		printf("Error getting xattr %s, error is presumably that the wrong file was passed\n", CURR_VNUM);
 		exit(0);
 	}
-	#endif
 
 	return _get_next_vnum(path, curr_vnum);
 }
@@ -412,7 +420,6 @@ static int studentfs_create(const char *path, mode_t mode, struct fuse_file_info
 
 static int studentfs_open(const char *path, struct fuse_file_info *fi)
 {
-	#ifdef HAVE_SETXATTR
 	int fd;
 	int create_flag = (fi->flags & O_CREAT) == O_CREAT;
 	char *sdir_str = malloc(sizeof(SDIR_XATTR));
@@ -441,7 +448,7 @@ static int studentfs_open(const char *path, struct fuse_file_info *fi)
 	}
 	fi->fh = fd;
 	free(sdir_str);
-	#endif
+
 	return 0;
 }
 
@@ -485,6 +492,7 @@ static int studentfs_write(const char *path, const char *buf, size_t size,
 {
 	int res;
 	char *val = malloc(sizeof(SDIR_XATTR));
+
 	if (getxattr(path, SDIR_XATTR, val, 0) >= 0) {
 		char *curr_ver = malloc(MAX_VNUM_LEN);
 		int sz = getxattr(path, CURR_VNUM, curr_ver, MAX_VNUM_LEN);
@@ -516,6 +524,8 @@ static int studentfs_write(const char *path, const char *buf, size_t size,
 		}
 
 	}
+	#endif
+
 	(void) path;
 	res = pwrite(fi->fh, buf, size, offset);
 	if (res == -1)
@@ -594,7 +604,6 @@ static int studentfs_fsync(const char *path, int isdatasync,
 	return 0;
 }
 
-#ifdef HAVE_SETXATTR
 /* xattr operations are optional and can safely be left unimplemented */
 static int studentfs_setxattr(const char *path, const char *name, const char *value,
 			size_t size, int flags)
@@ -632,7 +641,6 @@ static int studentfs_removexattr(const char *path, const char *name)
 		return -errno;
 	return 0;
 }
-#endif /* HAVE_SETXATTR */
 
 void *
 studentfs_init(struct fuse_conn_info *conn)
@@ -680,12 +688,10 @@ static struct fuse_operations studentfs_oper = {
 	.flush		= studentfs_flush,
 	.release	= studentfs_release,
 	.fsync		= studentfs_fsync,
-#ifdef HAVE_SETXATTR
 	.setxattr	= studentfs_setxattr,
 	.getxattr	= studentfs_getxattr,
 	.listxattr	= studentfs_listxattr,
 	.removexattr	= studentfs_removexattr,
-#endif
 	.flag_nullpath_ok = 1,
 #if HAVE_UTIMENSAT
 	.flag_utime_omit_ok = 1,

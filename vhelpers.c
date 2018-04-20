@@ -1,3 +1,5 @@
+
+/* Helper to parse version number. */
 char *_get_next_vnum(const char *path, char *vnum) {
 	// Get the first part of the string, and the last number as a series of tokens
 	char *final_token  = malloc(MAX_VNUM_LEN);
